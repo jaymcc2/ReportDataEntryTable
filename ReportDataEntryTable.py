@@ -196,9 +196,9 @@ def main():
     content = ttk.Frame(root)
     # table_columns = {'NAME': 'Name', 'COLOR': 'Color', 'SHAPE': 'Shape'}
     table_columns = {
-                     'COLOR': ('Color', 200, 20),
-                     'SHAPE': ('Shape', 200, 20),
-                     'SIZE': ('Size', 200, 20),
+                     'STATE': ('State', 200, 20),
+                     'CITY': ('City', 200, 20),
+                     'ZIP': ('Zip', 200, 20),
                      }
     table = ReportDataEntryTable(content, table_columns, 5)
     # Layout widgets
