@@ -193,12 +193,6 @@ class ReportDataEntryTable(ttk.Frame):
                 return 0
         return 1
 
-        # for r in self.entry_list:
-        #     # Check for empty entry and return error is True
-        #     if not r.get():
-        #         return 0
-        # return 1
-
 
 def main():
     root = tk.Tk()
