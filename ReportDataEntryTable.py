@@ -41,13 +41,16 @@ class ReportDataEntryTable(ttk.Frame):
 
         # Create buttons to manage the table and entry widgets
         btn_clear_row = ttk.Button(fr_command_btns, text='Clear', command=lambda: self.clear_entry_row())
-        btn_add_row = ttk.Button(fr_command_btns, text='Add Row', command=lambda: self.add_table_row())
+        btn_add_row = ttk.Button(fr_command_btns, text='Add Row', command=lambda: self.add_table_row()) 
         # Create unselect button, call configure to assign command that hides btn_table_unselect
         self.fr_selected_row_commands = ttk.Frame(fr_command_btns)
         btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row')
         btn_table_unselect.configure(command=lambda: self.clear_selection())
-        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', command=lambda: self.update_table_row())
-        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row', command=lambda: self.verify_delete_table_row())
+        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', 
+                                          command=lambda: self.update_table_row(self.selected_row_iid(), 
+                                                                                self.selected_row_number()))
+        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row', 
+                                          command=lambda: self.verify_delete_table_row())
 
         btn_table_unselect.grid(column=25, row=2)
         btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
@@ -64,11 +67,17 @@ class ReportDataEntryTable(ttk.Frame):
         self.entries.move_to_end('ROWNUMBER', last=False)
 
         # Setup Table/Tree Information
-        self.table = ttk.Treeview(fr_content, height=row_cnt)
+        fr_table = ttk.Frame(fr_content)
+        fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
+        self.table = ttk.Treeview(fr_table, height=row_cnt)
         self.table.grid(column=0, row=0)
+        # Add scrollbar function to table
+        scrl_table = ttk.Scrollbar(fr_table, orient=tk.VERTICAL, command=self.table.yview)
+        self.table['yscrollcommand'] = scrl_table.set
+        scrl_table.grid(column=1, row=0, sticky=('N', 'S', 'E'))
 
         # Bind selection to tree widget, call table_row_selected
-        self.table.bind('<<TreeviewSelect>>', lambda event: self.table_row_selected())        # self.table.column('#0', width=0, stretch=tk.NO)  # Hide first (0th) column
+        self.table.bind('<<TreeviewSelect>>', lambda event: self.table_row_selected())
         # Declare and configure columns
         self.table['show'] = 'headings'
         self.table['columns'] = list(self.entries.keys())  # (table_columns.keys())
@@ -84,8 +93,9 @@ class ReportDataEntryTable(ttk.Frame):
         if not self.table.selection():
             return
         row_data = self.table.set(self.table.focus())
-        print(f'ROW NUMBER: {self.selected_row_num()}')
+        print(f'INDEX: {self.selected_row_index()} IID: {self.selected_row_iid()}')
         self.set_entry_row_data(row_data)
+        # When table selected, show the selected table row commands
         if self.table.selection():
             self.fr_selected_row_commands.grid(row=2, column=20)
             self.fr_selected_row_commands.tkraise()
@@ -97,22 +107,14 @@ class ReportDataEntryTable(ttk.Frame):
         self.fr_selected_row_commands.grid_forget()
 
 
-    def add_table_row(self, table_index=None, row_num=None):
+    def add_table_row(self): #table_index=None,
         if not self.validate_entry_row_data():
             return 0
         row_data = self.get_entry_row_data()
-        
-        # Setup values for data entry
-        if row_num:
-            row_data.insert(0, row_num)
-        else:
-            row_data.insert(0, self.get_table_last_row_number() + 1)
-        
-        if not table_index:
-            table_index = tk.END
+        row_data.insert(0, self.get_table_last_row_number() + 1)
         # Add row number column to beginning of list of row_data
-        print(row_num)
-        self.table.insert('', table_index, values=row_data)
+        self.table.insert('', tk.END, values=row_data)
+        self.table.yview(tk.MOVETO, 1) # Scroll Y to see new entry
         # Reset table and entry
         self.clear_entry_row()
         self.clear_selection()
@@ -122,36 +124,33 @@ class ReportDataEntryTable(ttk.Frame):
             return self.table.selection()[0]
 
     def selected_row_index(self):
-        if self.table.selection():
             return self.table.index(self.table.selection())
 
-    def selected_row_num(self):
-        if self.table.selection:
-            return self.table.set(self.selected_row_iid())['ROWNUMBER']
+    def selected_row_number(self):
+        return self.selected_row_index() + 1
 
-    def update_table_row(self):
-        # row_data = get_entry_row_data()
-        selected_row = self.table.index(self.table.selection())
-        row_num = self.selected_row_num()
-        row_iid = self.selected_row_iid()
-        self.add_table_row(selected_row, row_num=row_num)
-        self.delete_table_row(row_iid)
+    def update_table_row(self, iid, row_num):
+        self.table.set(iid, 'ROWNUMBER', row_num)
+        for k, v in self.entries.items():
+            if k != 'ROWNUMBER':
+                self.table.set(iid, k, v.entry.get())
 
+    def table_row_count(self):
+        return self.table.get_children()
 
     def get_table_last_row_id(self):
-        num_id = self.table.get_children()
-        if num_id:
-            return self.table.get_children()[-1]
-        else:
-            return None
+        if self.table_row_count():
+            return self.table_row_count()[-1]
+        return None
+
+    def table_last_index(self):
+        return self.table.index(self.get_table_last_row_id())
 
     def get_table_last_row_number(self):
-        """Returns the row number from the "ROW" column of the last row
-           returns as an int"""
-        last_id = self.get_table_last_row_id()
-        if not last_id:
-            return 0
-        return int(self.table.set(last_id)["ROWNUMBER"])
+        """Uses table index to determine last row number"""
+        if not self.table_row_count():
+            return 0 # Return 0 for an empty table
+        return self.table.index(self.get_table_last_row_id()) + 1
 
     def delete_table_row(self, row_iid):
         self.table.delete(row_iid)
