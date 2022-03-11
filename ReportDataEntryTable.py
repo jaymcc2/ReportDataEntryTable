@@ -93,12 +93,9 @@ class ReportDataEntryTable(ttk.Frame):
     # Whenver btn_unselect_row is clicked, clear the selections from the
     # table, then hide the button
     def clear_selection(self):
-        # for i in table.selection():
-        #     table.selection_remove(i)
         self.table.selection_set('')
         self.fr_selected_row_commands.grid_forget()
-        # btn_unselect_row.grid_forget()
-        # btn_table_row_update.grid_forget()
+
 
     def add_table_row(self, table_index=None, row_num=None):
         if not self.validate_entry_row_data():
