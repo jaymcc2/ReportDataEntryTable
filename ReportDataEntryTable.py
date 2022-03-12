@@ -30,6 +30,7 @@ class ReportDataEntryTable(ttk.Frame):
                                               name=v[0],
                                               col_width=v[1],
                                               entry_width=v[2])
+            self.entries[k].entry.bind('<Return>', lambda event: self._add_table_row())
         # Create entry widgets
         for num, v in enumerate(self.entries.values()):
             if v.label is None:
@@ -40,17 +41,17 @@ class ReportDataEntryTable(ttk.Frame):
             v.entry.grid(row=1, column=num, sticky=('W', 'E'))
 
         # Create buttons to manage the table and entry widgets
-        btn_clear_row = ttk.Button(fr_command_btns, text='Clear', command=lambda: self.clear_entry_row())
-        btn_add_row = ttk.Button(fr_command_btns, text='Add Row', command=lambda: self.add_table_row()) 
+        btn_clear_row = ttk.Button(fr_command_btns, text='Clear', command=lambda: self._clear_entry_row())
+        btn_add_row = ttk.Button(fr_command_btns, text='Add Row', command=lambda: self._add_table_row()) 
         # Create unselect button, call configure to assign command that hides btn_table_unselect
         self.fr_selected_row_commands = ttk.Frame(fr_command_btns)
         btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row')
-        btn_table_unselect.configure(command=lambda: self.clear_selection())
+        btn_table_unselect.configure(command=lambda: self._clear_selection())
         btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', 
-                                          command=lambda: self.update_table_row(self.selected_row_iid(), 
-                                                                                self.selected_row_number()))
-        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row', 
-                                          command=lambda: self.verify_delete_table_row())
+                                          command=lambda: self._update_table_row(self.selected_row_iid,
+                                                                                self.selected_row_number))
+        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row',
+                                          command=lambda: self._verify_delete_table_row())
 
         btn_table_unselect.grid(column=25, row=2)
         btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
@@ -76,8 +77,7 @@ class ReportDataEntryTable(ttk.Frame):
         self.table['yscrollcommand'] = scrl_table.set
         scrl_table.grid(column=1, row=0, sticky=('N', 'S', 'E'))
 
-        # Bind selection to tree widget, call table_row_selected
-        self.table.bind('<<TreeviewSelect>>', lambda event: self.table_row_selected())
+
         # Declare and configure columns
         self.table['show'] = 'headings'
         self.table['columns'] = list(self.entries.keys())  # (table_columns.keys())
@@ -86,15 +86,18 @@ class ReportDataEntryTable(ttk.Frame):
             self.table.heading(k, text=v.name)
         ttk.Style().configure('Treeview', rowheight=30)
 
+        # Bind selection to tree widget, call _table_row_selected
+        self.table.bind('<<TreeviewSelect>>', lambda event: self._table_row_selected())
+
     # Methods for table widget ######################################
     #################################################################
     # Whenever a table row is selected, show the 'btn_unselect_row'
-    def table_row_selected(self):
+    def _table_row_selected(self):
         if not self.table.selection():
             return
         row_data = self.table.set(self.table.focus())
-        print(f'INDEX: {self.selected_row_index()} IID: {self.selected_row_iid()}')
-        self.set_entry_row_data(row_data)
+        print(f'INDEX: {self.selected_row_index} IID: {self.selected_row_iid}')
+        self._set_entry_row_data(row_data)
         # When table selected, show the selected table row commands
         if self.table.selection():
             self.fr_selected_row_commands.grid(row=2, column=20)
@@ -102,89 +105,106 @@ class ReportDataEntryTable(ttk.Frame):
 
     # Whenver btn_unselect_row is clicked, clear the selections from the
     # table, then hide the button
-    def clear_selection(self):
+    def _clear_selection(self):
         self.table.selection_set('')
         self.fr_selected_row_commands.grid_forget()
 
-
-    def add_table_row(self): #table_index=None,
-        if not self.validate_entry_row_data():
+    def _add_table_row(self): #table_index=None,
+        if not self._validate_entry_row_data():
             return 0
-        row_data = self.get_entry_row_data()
-        row_data.insert(0, self.get_table_last_row_number() + 1)
+        row_data = self._get_entry_row_data()
+        row_data.insert(0, self.last_row_number + 1)
         # Add row number column to beginning of list of row_data
         self.table.insert('', tk.END, values=row_data)
         self.table.yview(tk.MOVETO, 1) # Scroll Y to see new entry
         # Reset table and entry
-        self.clear_entry_row()
-        self.clear_selection()
+        self._clear_entry_row()
+        self._clear_selection()
 
-    def selected_row_iid(self):
-        if self.table.selection():
-            return self.table.selection()[0]
-
-    def selected_row_index(self):
-            return self.table.index(self.table.selection())
-
-    def selected_row_number(self):
-        return self.selected_row_index() + 1
-
-    def update_table_row(self, iid, row_num):
+    def _update_table_row(self, iid, row_num):
         self.table.set(iid, 'ROWNUMBER', row_num)
         for k, v in self.entries.items():
             if k != 'ROWNUMBER':
                 self.table.set(iid, k, v.entry.get())
 
-    def table_row_count(self):
-        return self.table.get_children()
+    def _renumber_rows(self):
+        for num, row in enumerate(self.get_table_iids()):
+            self.table.set(row, 'ROWNUMBER', num + 1)
 
-    def get_table_last_row_id(self):
-        if self.table_row_count():
-            return self.table_row_count()[-1]
-        return None
-
-    def table_last_index(self):
-        return self.table.index(self.get_table_last_row_id())
-
-    def get_table_last_row_number(self):
-        """Uses table index to determine last row number"""
-        if not self.table_row_count():
-            return 0 # Return 0 for an empty table
-        return self.table.index(self.get_table_last_row_id()) + 1
-
-    def delete_table_row(self, row_iid):
+    def _delete_table_row(self, row_iid):
         self.table.delete(row_iid)
         # Reset table and entry
-        self.clear_entry_row()
-        self.clear_selection()
+        self._renumber_rows()
+        self._clear_entry_row()
+        self._clear_selection()
 
-    def verify_delete_table_row(self):
+    def _verify_delete_table_row(self):
         if messagebox.askyesno(title='Warning! Deleting a table row...', message='This action will permamanently\
                                       delete the selected table row.\nAre you sure you want to proceed?', icon='warning'):
             print('going to delete...')
-            self.delete_table_row(self.selected_row_iid())
+            self._delete_table_row(self.selected_row_iid)
+
+    @property
+    def selected_row_iid(self):
+        if self.table.selection():
+            return self.table.selection()[0]
+
+    @property
+    def selected_row_index(self):
+            return self.table.index(self.table.selection())
+
+    @property
+    def selected_row_number(self):
+        return self.selected_row_index + 1
+
+    @property
+    def table_row_count(self):
+        return len(self.table.get_children())
+
+    def get_table_iids(self):
+        return self.table.get_children()
+
+    @property
+    def last_row_id(self):
+        if self.table_row_count:
+            return self.get_table_iids()[-1]
+        return None
+
+    @property
+    def last_row_index(self):
+        return self.table.index(self.last_row_id)
+
+    @property
+    def last_row_number(self):
+        """Uses table index to determine last row number"""
+        if not self.table_row_count:
+            return 0  # Return 0 for an empty table
+        return self.table.index(self.last_row_id) + 1
+
+
 
     # Methods for entry widgets #####################################
     #################################################################
-    def get_entry_row_data(self):
+    def _get_entry_row_data(self):
         return [v.entry.get() for v in self.entries.values() if v.entry is not None]
 
-    def set_entry_row_data(self, row_data):
-        self.clear_entry_row()
+    def _set_entry_row_data(self, row_data):
+        self._clear_entry_row()
         for e, i in zip(self.entries.values(), row_data.values()):
             if e.entry is not None:
                 e.entry.insert(0, i)
 
-    def clear_entry_row(self):
+    def _clear_entry_row(self):
         """Clear the entry widgets that are used to add data to table"""
         for v in self.entries.values():
             if v.entry is not None:
                 v.entry.delete(0, tk.END)
+        list(self.entries.values())[1].entry.focus_set()
 
-    def validate_entry_row_data(self):
+    def _validate_entry_row_data(self):
         """validate the row data"""
         for k, v in self.entries.items():
-            if k is not 'ROWNUMBER' and not v.entry.get():
+            if k != 'ROWNUMBER' and not v.entry.get():
                 print('EMPTY FOUND')
                 return 0
         return 1
@@ -192,7 +212,7 @@ class ReportDataEntryTable(ttk.Frame):
 
 def main():
     root = tk.Tk()
-    content = ttk.Frame(root)
+    content = ttk.Frame(root, padding=(10, 10, 10, 10))
     # table_columns = {'NAME': 'Name', 'COLOR': 'Color', 'SHAPE': 'Shape'}
     table_columns = {
                      'STATE': ('State', 200, 20),
@@ -200,9 +220,13 @@ def main():
                      'ZIP': ('Zip', 200, 20),
                      }
     table = ReportDataEntryTable(content, table_columns, 5)
+
+    close = ttk.Button(content, text='Close', command=root.destroy)
+
     # Layout widgets
     content.grid(column=0, row=0, sticky=('W', 'E'))
     table.grid(column=0, row=0, sticky=('W', 'E'))
+    close.grid(row=99, column=0, sticky='E')
 
     root.columnconfigure(0, weight=1)
     content.columnconfigure(0, weight=1)
