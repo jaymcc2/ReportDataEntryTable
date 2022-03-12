@@ -4,6 +4,19 @@ from tkinter import messagebox
 from collections import OrderedDict
 from collections import namedtuple
 
+"""
+This module requires three functions to operate
+1. A controller function that wraps the working functions, and provides an instanciation method for 
+   the other classes, and an input and output method for information to the package
+2. A table function, that exposes methods and properties to input and output information
+3. An entry function that allows user input, and provides methods to input and output information
+4. A command function that bridges the table and entry functions, it should connect to the methods of 
+   each in a logical way
+
+Each of these seperate functions should be created as a seperate class in the package.  The controller
+function should be the only one that is called on???
+"""
+
 
 class ReportDataEntryTable(ttk.Frame):
     def __init__(self, parent, table_columns, row_cnt):
