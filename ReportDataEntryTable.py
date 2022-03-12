@@ -181,6 +181,9 @@ class ReportDataEntryTable(ttk.Frame):
             return 0  # Return 0 for an empty table
         return self.table.index(self.last_row_id) + 1
 
+    def get_rows(self):
+        return [self.table.set(r) for r in self.get_table_iids()]
+
 
 
     # Methods for entry widgets #####################################
@@ -219,14 +222,17 @@ def main():
                      'CITY': ('City', 200, 20),
                      'ZIP': ('Zip', 200, 20),
                      }
+
     table = ReportDataEntryTable(content, table_columns, 5)
 
     close = ttk.Button(content, text='Close', command=root.destroy)
+    get_rows = ttk.Button(content, text='Get Rows', command=lambda: print(table.get_rows()))
 
     # Layout widgets
     content.grid(column=0, row=0, sticky=('W', 'E'))
     table.grid(column=0, row=0, sticky=('W', 'E'))
     close.grid(row=99, column=0, sticky='E')
+    get_rows.grid(row=98, column=0, sticky='E')
 
     root.columnconfigure(0, weight=1)
     content.columnconfigure(0, weight=1)
