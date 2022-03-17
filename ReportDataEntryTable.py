@@ -26,84 +26,44 @@ class ReportDataEntryTable(ttk.Frame):
         fr_content = ttk.Frame(self, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
         fr_content.grid(row=0, column=0, padx=10, pady=10)
 
-        fr_entry_form = ttk.Frame(fr_content)  # Frame for Entry widgets
-        fr_command_btns = ttk.Frame(fr_content)  # Frame for command buttons
+        fr_entry = ReportDataEntryInputs(fr_content, table_columns)
+        fr_entry.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
 
-        fr_entry_form.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
+        fr_command_btns = ReportDataEntryButtons(fr_content) # Frame for command buttons
         fr_command_btns.grid(row=60, column=0, padx=10, sticky=('E', 'W'))  # Frame for command buttons
 
-        # Keep widgets related to user input contained within self.entries for ease of access
-        self.entries = OrderedDict()
-        EntryCollection = namedtuple('EntryCollection', 'entry label name col_width entry_width')
-        # Loop through input to the class, create each dictionary as an EntryCollection and add
-        # to self.entries
-        for k, v in table_columns.items():
-            self.entries[k] = EntryCollection(entry=ttk.Entry(fr_entry_form),
-                                              label=ttk.Label(fr_entry_form),
-                                              name=v[0],
-                                              col_width=v[1],
-                                              entry_width=v[2])
-            self.entries[k].entry.bind('<Return>', lambda event: self._add_table_row())
-        # Create entry widgets
-        for num, v in enumerate(self.entries.values()):
-            if v.label is None:
-                continue
-            v.label.configure(text=v.name, anchor='center')
-            v.entry.configure(width=v.entry_width)
-            v.label.grid(row=0, column=num)
-            v.entry.grid(row=1, column=num, sticky=('W', 'E'))
-
-        # Create buttons to manage the table and entry widgets
-        btn_clear_row = ttk.Button(fr_command_btns, text='Clear', command=lambda: self._clear_entry_row())
-        btn_add_row = ttk.Button(fr_command_btns, text='Add Row', command=lambda: self._add_table_row()) 
-        # Create unselect button, call configure to assign command that hides btn_table_unselect
-        self.fr_selected_row_commands = ttk.Frame(fr_command_btns)
-        btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row')
-        btn_table_unselect.configure(command=lambda: self._clear_selection())
-        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', 
-                                          command=lambda: self._update_table_row(self.selected_row_iid,
-                                                                                self.selected_row_number))
-        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row',
-                                          command=lambda: self._verify_delete_table_row())
-
-        btn_table_unselect.grid(column=25, row=2)
-        btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
-        btn_table_delete_row.grid(column=10, row=2, padx=(5, 100))
-
-        btn_add_row.grid(row=2, column=90, sticky=('W', 'E'))
-        btn_clear_row.grid(row=2, column=80, padx=(0, 5), sticky=('E'))
-
-        # self.columnconfigure(0, weight=1)
-        fr_command_btns.columnconfigure(0, weight=1)
-
         # Add Row number to self.entries and move it to beginning
-        self.entries['ROWNUMBER'] = EntryCollection(None, None, 'Row\nNumber\n', 50, None)
-        self.entries.move_to_end('ROWNUMBER', last=False)
+        # self.entries['ROWNUMBER'] = EntryCollection(None, None, 'Row\nNumber\n', 50, None)
+        # self.entries.move_to_end('ROWNUMBER', last=False)
 
         # Setup Table/Tree Information
-        fr_table = ttk.Frame(fr_content)
+        fr_table = ReportDataTable(fr_content, table_columns, row_cnt=5)
         fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
-        self.table = ttk.Treeview(fr_table, height=row_cnt)
+
+
+class ReportDataTable(ttk.Frame):
+    def __init__(self, parent, table_columns, row_cnt=5):
+        super().__init__(parent)
+
+        self.table = ttk.Treeview(self, height=row_cnt)
         self.table.grid(column=0, row=0)
         # Add scrollbar function to table
-        scrl_table = ttk.Scrollbar(fr_table, orient=tk.VERTICAL, command=self.table.yview)
+        scrl_table = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.table.yview)
         self.table['yscrollcommand'] = scrl_table.set
         scrl_table.grid(column=1, row=0, sticky=('N', 'S', 'E'))
 
 
         # Declare and configure columns
         self.table['show'] = 'headings'
-        self.table['columns'] = list(self.entries.keys())  # (table_columns.keys())
-        for k, v in self.entries.items():
-            self.table.column(k, width=v.col_width, anchor=tk.CENTER)
-            self.table.heading(k, text=v.name)
+        self.table['columns'] = list(table_columns.keys())  # (table_columns.keys())
+        # for k, v in table_columns.items():
+        #     self.table.column(k, width=v.col_width, anchor=tk.CENTER)
+        #     self.table.heading(k, text=v.name)
         ttk.Style().configure('Treeview', rowheight=30)
 
         # Bind selection to tree widget, call _table_row_selected
         self.table.bind('<<TreeviewSelect>>', lambda event: self._table_row_selected())
 
-    # Methods for table widget ######################################
-    #################################################################
     # Whenever a table row is selected, show the 'btn_unselect_row'
     def _table_row_selected(self):
         if not self.table.selection():
@@ -199,6 +159,65 @@ class ReportDataEntryTable(ttk.Frame):
 
 
 
+class ReportDataEntryButtons(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        # Create buttons to manage the table and entry widgets
+        btn_clear_row = ttk.Button(self, text='Clear', command=lambda: self._clear_entry_row())
+        btn_add_row = ttk.Button(self, text='Add Row', command=lambda: self._add_table_row()) 
+        # Create unselect button, call configure to assign command that hides btn_table_unselect
+        self.fr_selected_row_commands = ttk.Frame(self)
+        btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row')
+        btn_table_unselect.configure(command=lambda: self._clear_selection())
+        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', 
+                                          command=lambda: self._update_table_row(self.selected_row_iid,
+                                                                                self.selected_row_number))
+        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row',
+                                          command=lambda: self._verify_delete_table_row())
+
+        btn_table_unselect.grid(column=25, row=2)
+        btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
+        btn_table_delete_row.grid(column=10, row=2, padx=(5, 100))
+
+        btn_add_row.grid(row=2, column=90, sticky=('W', 'E'))
+        btn_clear_row.grid(row=2, column=80, padx=(0, 5), sticky=('E'))
+
+        # self.columnconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+
+
+
+class ReportDataEntryInputs(ttk.Frame):
+    def __init__(self, parent, input_info):
+        super().__init__(parent)
+
+        fr_entry_form = ttk.Frame(self)  # Frame for Entry widgets
+        fr_entry_form.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
+
+        # Keep widgets related to user input contained within self.entries for ease of access
+        self.entries = OrderedDict()
+        EntryCollection = namedtuple('EntryCollection', 'entry label name col_width entry_width')
+        # Loop through input to the class, create each dictionary as an EntryCollection and add
+        # to self.entries
+        for k, v in input_info.items():
+            self.entries[k] = EntryCollection(entry=ttk.Entry(fr_entry_form),
+                                              label=ttk.Label(fr_entry_form),
+                                              name=v[0],
+                                              col_width=v[1],
+                                              entry_width=v[2])
+            self.entries[k].entry.bind('<Return>', lambda event: self._add_table_row())
+        # Create entry widgets
+        for num, v in enumerate(self.entries.values()):
+            if v.label is None:
+                continue
+            v.label.configure(text=v.name, anchor='center')
+            v.entry.configure(width=v.entry_width)
+            v.label.grid(row=0, column=num)
+            v.entry.grid(row=1, column=num, sticky=('W', 'E'))
+
+
+
     # Methods for entry widgets #####################################
     #################################################################
     def _get_entry_row_data(self):
@@ -224,6 +243,8 @@ class ReportDataEntryTable(ttk.Frame):
                 print('EMPTY FOUND')
                 return 0
         return 1
+
+
 
 
 def main():
