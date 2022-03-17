@@ -17,10 +17,31 @@ Each of these seperate functions should be created as a seperate class in the pa
 function should be the only one that is called on???
 """
 
+class Controller:
+    def __init__(self):
+        self.columns = {
+                         'STATE': ('State', 200, 20),
+                         'CITY': ('City', 200, 20),
+                         'ZIP': ('Zip', 200, 20),
+                         }
 
-class ReportDataEntryTable(ttk.Frame):
-    def __init__(self, parent, table_columns, row_cnt):
-        super().__init__(parent)
+    def start(self):
+        self.table = ReportDataTable(self.columns)
+        self.entry = ReportDataEntryInputs(self.columns)
+        self.command = ReportDataEntryButtons()
+
+    def show(self, parent):
+        # content = ttk.Frame(parent, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
+        self.table.grid(row=10, column=0)
+        self.entry.grid(row=20, column=0)
+        self.command.grid(row=30, column=0)
+
+        # return content
+
+
+class ReportView(ttk.Frame):
+    def __init__(self, table_columns, row_cnt):
+        super().__init__()
 
         # Make container for all content in this frame
         fr_content = ttk.Frame(self, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
@@ -40,10 +61,32 @@ class ReportDataEntryTable(ttk.Frame):
         fr_table = ReportDataTable(fr_content, table_columns, row_cnt=5)
         fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
 
+# class ReportDataEntryTable(ttk.Frame):
+#     def __init__(self, parent, table_columns, row_cnt):
+#         super().__init__(parent)
+
+#         # Make container for all content in this frame
+#         fr_content = ttk.Frame(self, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
+#         fr_content.grid(row=0, column=0, padx=10, pady=10)
+
+#         fr_entry = ReportDataEntryInputs(fr_content, table_columns)
+#         fr_entry.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
+
+#         fr_command_btns = ReportDataEntryButtons(fr_content) # Frame for command buttons
+#         fr_command_btns.grid(row=60, column=0, padx=10, sticky=('E', 'W'))  # Frame for command buttons
+
+#         # Add Row number to self.entries and move it to beginning
+#         # self.entries['ROWNUMBER'] = EntryCollection(None, None, 'Row\nNumber\n', 50, None)
+#         # self.entries.move_to_end('ROWNUMBER', last=False)
+
+#         # Setup Table/Tree Information
+#         fr_table = ReportDataTable(fr_content, table_columns, row_cnt=5)
+#         fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
+
 
 class ReportDataTable(ttk.Frame):
-    def __init__(self, parent, table_columns, row_cnt=5):
-        super().__init__(parent)
+    def __init__(self, table_columns, row_cnt=5):
+        super().__init__()
 
         self.table = ttk.Treeview(self, height=row_cnt)
         self.table.grid(column=0, row=0)
@@ -160,8 +203,8 @@ class ReportDataTable(ttk.Frame):
 
 
 class ReportDataEntryButtons(ttk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
 
         # Create buttons to manage the table and entry widgets
         btn_clear_row = ttk.Button(self, text='Clear', command=lambda: self._clear_entry_row())
@@ -189,8 +232,8 @@ class ReportDataEntryButtons(ttk.Frame):
 
 
 class ReportDataEntryInputs(ttk.Frame):
-    def __init__(self, parent, input_info):
-        super().__init__(parent)
+    def __init__(self, input_info):
+        super().__init__()
 
         fr_entry_form = ttk.Frame(self)  # Frame for Entry widgets
         fr_entry_form.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
@@ -248,8 +291,6 @@ class ReportDataEntryInputs(ttk.Frame):
 
 
 def main():
-    root = tk.Tk()
-    content = ttk.Frame(root, padding=(10, 10, 10, 10))
     # table_columns = {'NAME': 'Name', 'COLOR': 'Color', 'SHAPE': 'Shape'}
     table_columns = {
                      'STATE': ('State', 200, 20),
@@ -257,20 +298,27 @@ def main():
                      'ZIP': ('Zip', 200, 20),
                      }
 
-    table = ReportDataEntryTable(content, table_columns, 5)
+    root = tk.Tk()
+
+    content = ttk.Frame(root, padding=(10, 10, 10, 10))
+    # table = ReportDataEntryTable(content, table_columns, 5)
+    control = Controller()
+    control.start()
+    dialog = control.show(content)
 
     close = ttk.Button(content, text='Close', command=root.destroy)
     get_rows = ttk.Button(content, text='Get Rows', command=lambda: print(table.get_rows()))
 
     # Layout widgets
-    content.grid(column=0, row=0, sticky=('W', 'E'))
-    table.grid(column=0, row=0, sticky=('W', 'E'))
+    content.grid(row=99, column=0, sticky=('W', 'E'))
+    # dialog.grid(row=0, column=0, sticky=('W', 'E'))
+    # table.grid(column=0, row=0, sticky=('W', 'E'))
     close.grid(row=99, column=0, sticky='E')
     get_rows.grid(row=98, column=0, sticky='E')
 
     root.columnconfigure(0, weight=1)
     content.columnconfigure(0, weight=1)
-    table.columnconfigure(0, weight=1)
+    # dialog.columnconfigure(0, weight=1)
 
     root.mainloop()
 
