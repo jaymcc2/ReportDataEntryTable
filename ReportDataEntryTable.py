@@ -30,7 +30,7 @@ class Controller:
         self.entry = ReportDataEntryInputs(self.columns)
         self.command = ReportDataEntryButtons()
 
-    def show(self, parent):
+    def show(self):
         # content = ttk.Frame(parent, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
         self.table.grid(row=10, column=0)
         self.entry.grid(row=20, column=0)
@@ -39,27 +39,27 @@ class Controller:
         # return content
 
 
-class ReportView(ttk.Frame):
-    def __init__(self, table_columns, row_cnt):
-        super().__init__()
+# class ReportView(ttk.Frame):
+#     def __init__(self, table_columns, row_cnt):
+#         super().__init__()
 
-        # Make container for all content in this frame
-        fr_content = ttk.Frame(self, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
-        fr_content.grid(row=0, column=0, padx=10, pady=10)
+#         # Make container for all content in this frame
+#         fr_content = ttk.Frame(self, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
+#         fr_content.grid(row=0, column=0, padx=10, pady=10)
 
-        fr_entry = ReportDataEntryInputs(fr_content, table_columns)
-        fr_entry.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
+#         fr_entry = ReportDataEntryInputs(fr_content, table_columns)
+#         fr_entry.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
 
-        fr_command_btns = ReportDataEntryButtons(fr_content) # Frame for command buttons
-        fr_command_btns.grid(row=60, column=0, padx=10, sticky=('E', 'W'))  # Frame for command buttons
+#         fr_command_btns = ReportDataEntryButtons(fr_content) # Frame for command buttons
+#         fr_command_btns.grid(row=60, column=0, padx=10, sticky=('E', 'W'))  # Frame for command buttons
 
-        # Add Row number to self.entries and move it to beginning
-        # self.entries['ROWNUMBER'] = EntryCollection(None, None, 'Row\nNumber\n', 50, None)
-        # self.entries.move_to_end('ROWNUMBER', last=False)
+#         # Add Row number to self.entries and move it to beginning
+#         # self.entries['ROWNUMBER'] = EntryCollection(None, None, 'Row\nNumber\n', 50, None)
+#         # self.entries.move_to_end('ROWNUMBER', last=False)
 
-        # Setup Table/Tree Information
-        fr_table = ReportDataTable(fr_content, table_columns, row_cnt=5)
-        fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
+#         # Setup Table/Tree Information
+#         fr_table = ReportDataTable(fr_content, table_columns, row_cnt=5)
+#         fr_table.grid(column=0, row=0, sticky=('W', 'N', 'E', 'S'))
 
 # class ReportDataEntryTable(ttk.Frame):
 #     def __init__(self, parent, table_columns, row_cnt):
@@ -90,6 +90,8 @@ class ReportDataTable(ttk.Frame):
 
         self.table = ttk.Treeview(self, height=row_cnt)
         self.table.grid(column=0, row=0)
+        lb_parent_info = ttk.Label(self, text=str(self))
+        lb_parent_info.grid(row=1, column=0)
         # Add scrollbar function to table
         scrl_table = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.table.yview)
         self.table['yscrollcommand'] = scrl_table.set
@@ -304,7 +306,7 @@ def main():
     # table = ReportDataEntryTable(content, table_columns, 5)
     control = Controller()
     control.start()
-    dialog = control.show(content)
+    dialog = control.show()
 
     close = ttk.Button(content, text='Close', command=root.destroy)
     get_rows = ttk.Button(content, text='Get Rows', command=lambda: print(table.get_rows()))
@@ -321,6 +323,7 @@ def main():
     # dialog.columnconfigure(0, weight=1)
 
     root.mainloop()
+
 
 if __name__ == '__main__':
     main()
