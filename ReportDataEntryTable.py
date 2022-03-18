@@ -3,6 +3,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from collections import OrderedDict
 from collections import namedtuple
+from config import LocationSample, PrimaryDefinition
 
 """
 This module requires three functions to operate
@@ -89,10 +90,11 @@ class ReportDataTable(ttk.Frame):
 
         # Declare and configure columns
         self.table['show'] = 'headings'
-        self.table['columns'] = list(table_columns.keys())  # (table_columns.keys())
-        for k, v in table_columns.items():
-            self.table.column(k, width=v[1], anchor=tk.CENTER)
-            self.table.heading(k, text=v[0])
+        c = [c.name for c in table_columns if c.show_column is True]
+        self.table['columns'] = c  #list(table_columns.keys())  # (table_columns.keys())
+        for c in (c for c in table_columns if c.show_column is True):
+            self.table.column(c.name, width=c.column_width, anchor=tk.CENTER)
+            self.table.heading(c.name, text=c.label)
         ttk.Style().configure('Treeview', rowheight=30)
 
     def get(self):
@@ -215,14 +217,12 @@ class ReportDataEntryInputs(ttk.Frame):
         EntryCollection = namedtuple('EntryCollection', 'entry label name')
         # Loop through input to the class, create each dictionary as an EntryCollection and add
         # to self.entries
-        for num, (k, v) in enumerate(input_info.items()):
-            self.entries[k] = EntryCollection(entry=ttk.Entry(fr_entry_form),
-                                              label=ttk.Label(fr_entry_form),
-                                              name=v[0])
-            self.entries[k].label.configure(text=self.entries[k].name, anchor='center')
-            self.entries[k].entry.configure(width=v[2])
-            self.entries[k].label.grid(row=0, column=num)
-            self.entries[k].entry.grid(row=1, column=num, sticky=('W', 'E'))
+        for num, c in enumerate(input_info):  # input_info.items()):
+            self.entries[c.name] = EntryCollection(entry=ttk.Entry(fr_entry_form, width=c.width),
+                                                   label=ttk.Label(fr_entry_form, text=c.label, anchor='center'),
+                                                   name=c.name)
+            self.entries[c.name].label.grid(row=0, column=num)
+            self.entries[c.name].entry.grid(row=1, column=num, sticky=('W', 'E'))
 
     def get(self):
         return {k: v.entry.get() for k, v in self.entries.items()}
@@ -250,17 +250,17 @@ class ReportDataEntryInputs(ttk.Frame):
 
 def main():
     # table_columns = {'NAME': 'Name', 'COLOR': 'Color', 'SHAPE': 'Shape'}
-    table_columns = {
-                     'STATE': ('State', 200, 20),
-                     'CITY': ('City', 200, 20),
-                     'ZIP': ('Zip', 200, 20),
-                     }
+    # table_columns = {
+    #                  'STATE': ('State', 200, 20),
+    #                  'CITY': ('City', 200, 20),
+    #                  'ZIP': ('Zip', 200, 20),
+    #                  }
 
     root = tk.Tk()
 
     content = ttk.Frame(root, padding=(10, 10, 10, 10))
     control = Controller()
-    control.start(content, table_columns)
+    control.start(content, PrimaryDefinition)
     control.show()
 
     close = ttk.Button(content, text='Close', command=root.destroy)
