@@ -6,16 +6,7 @@ from collections import namedtuple
 from config import LocationSample, PrimaryDefinition
 
 """
-This module requires three functions to operate
-1. A controller function that wraps the working functions, and provides an instanciation method for 
-   the other classes, and an input and output method for information to the package
-2. A table function, that exposes methods and properties to input and output information
-3. An entry function that allows user input, and provides methods to input and output information
-4. A command function that bridges the table and entry functions, it should connect to the methods of 
-   each in a logical way
-
-Each of these seperate functions should be created as a seperate class in the package.  The controller
-function should be the only one that is called on???
+Create a class that is specific to each analysis type
 """
 
 
