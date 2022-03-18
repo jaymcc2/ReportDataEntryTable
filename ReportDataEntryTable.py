@@ -32,7 +32,8 @@ class Controller:
     def handle_clear_entry_row(self):
         self.entry.clear()
         first_entry_field_name = next(iter(self.entry.entries))
-        self.entry.entries[first_entry_field_name].entry.focus_set()
+        self.entry.set_focus()
+        # self.entry.entries[first_entry_field_name].entry.focus_set()
 
     # Table functions ###############################################
     def handle_unselect_table_row(self):
@@ -61,7 +62,7 @@ class Controller:
 
         # bind enter key to last entry field, have it add entry fields to data table
         last_entry_field_name = next(reversed(self.entry.entries))
-        self.entry.entries[last_entry_field_name].entry.bind('<Return>', lambda event: self.handle_add_table_row())
+        # self.entry.entries[last_entry_field_name].entry.bind('<Return>', lambda event: self.handle_add_table_row())
 
         # Bind selection to tree widget, call _table_row_selected
         self.table.table.bind('<<TreeviewSelect>>', self.handle_table_row_selected)
@@ -81,11 +82,18 @@ class ReportDataTable(ttk.Frame):
 
         # Declare and configure columns
         self.table['show'] = 'headings'
-        c = [c.name for c in table_columns if c.show_column is True]
-        self.table['columns'] = c  #list(table_columns.keys())  # (table_columns.keys())
-        for c in (c for c in table_columns if c.show_column is True):
-            self.table.column(c.name, width=c.column_width, anchor=tk.CENTER)
-            self.table.heading(c.name, text=c.label)
+
+        self.table['columns'] = ['State', 'City', 'Zip', 'Description']
+        self.table.column('State', width=100, anchor=tk.CENTER)
+        self.table.heading('State', text='State')
+        self.table.column('City', width=100, anchor=tk.CENTER)
+        self.table.heading('City', text='City')
+        self.table.column('Zip', width=100, anchor=tk.CENTER)
+        self.table.heading('Zip', text='Zip')
+        self.table.column('Description', width=100, anchor=tk.CENTER)
+        self.table.heading('Description', text='Description')
+
+        self.table['displaycolumns'] = ('State', 'City', 'Zip')
         ttk.Style().configure('Treeview', rowheight=30)
 
     def get(self):
@@ -203,32 +211,40 @@ class ReportDataEntryInputs(ttk.Frame):
         fr_entry_form = ttk.Frame(self)  # Frame for Entry widgets
         fr_entry_form.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
 
-        # Keep widgets related to user input contained within self.entries for ease of access
-        self.entries = OrderedDict()
-        EntryCollection = namedtuple('EntryCollection', 'entry label name')
-        # Loop through input to the class, create each dictionary as an EntryCollection and add
-        # to self.entries
-        for num, c in enumerate(input_info):  # input_info.items()):
-            self.entries[c.name] = EntryCollection(entry=ttk.Entry(fr_entry_form, width=c.width),
-                                                   label=ttk.Label(fr_entry_form, text=c.label, anchor='center'),
-                                                   name=c.name)
-            self.entries[c.name].label.grid(row=0, column=num)
-            self.entries[c.name].entry.grid(row=1, column=num, sticky=('W', 'E'))
+        self.entries = {}
+
+        self.entries['State'] = (ttk.Label(fr_entry_form, text='State', anchor='center'), ttk.Entry(fr_entry_form, width=10))
+        self.entries['City'] = (ttk.Label(fr_entry_form, text='City', anchor='center'), ttk.Entry(fr_entry_form, width=10))
+        self.entries['Zip'] = (ttk.Label(fr_entry_form, text='Zip', anchor='center'), ttk.Entry(fr_entry_form, width=10))
+        self.entries['Description'] = (ttk.Label(fr_entry_form, text='Description', anchor='center'), ttk.Entry(fr_entry_form, width=50))
+
+        self._grid_label_entry(self.entries['State'], 0, 0)
+        self._grid_label_entry(self.entries['City'], 0, 1)
+        self._grid_label_entry(self.entries['Zip'], 0, 2)
+        self._grid_label_entry(self.entries['Description'], 3, 0, columnspan=3)
+
+    def _grid_label_entry(self, widget_collection, row, column, **kwargs):
+        l, e = widget_collection
+        l.grid(row=row, column=column, **kwargs)
+        e.grid(row=row + 1, column=column, **kwargs)
 
     def get(self):
-        return {k: v.entry.get() for k, v in self.entries.items()}
+        return {k: v[1].get() for k, v in self.entries.items()}
 
     def set(self, row_data):
         for e, i in zip(self.entries.values(), row_data.values()):
             print(i)
-            e.entry.insert(0, i)
+            e[1].insert(0, i)
 
     def clear(self):
         """Clear the entry widgets that are used to add data to table"""
         for v in self.entries.values():
-            if v.entry is not None:
-                v.entry.delete(0, tk.END)
-        list(self.entries.values())[1].entry.focus_set()
+            if v[1] is not None:
+                v[1].delete(0, tk.END)
+        # list(self.entries.values())[0][1].focus_set()
+
+    def set_focus(self):
+        list(self.entries.values())[0][1].focus_set()
 
     def validate_entry_row_data(self):
         """validate the row data"""
