@@ -1,10 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-from collections import OrderedDict
-from collections import namedtuple
-from config import LocationSample, PrimaryDefinition
-
 """
 Create a class that is specific to each analysis type
 """
@@ -12,9 +8,9 @@ Create a class that is specific to each analysis type
 
 class Controller:
 
-    def start(self, parent, table_columns):
-        self.table = ReportDataTable(parent, table_columns, self)
-        self.entry = ReportDataEntryInputs(parent, table_columns, self)
+    def start(self, parent):
+        self.table = AnalysisDataTable(parent, self)
+        self.entry = AnalysisDataInput(parent, self)
         self.command = ReportDataEntryButtons(parent, self)
 
         self.create_dialog_bindings()
@@ -23,7 +19,7 @@ class Controller:
         # content = ttk.Frame(parent, borderwidth=1, relief='ridge', padding=(5, 5, 5, 5))
         self.table.grid(row=10, column=0)
         self.entry.grid(row=20, column=0)
-        self.command.grid(row=30, column=0)
+        self.command.grid(row=30, column=0, sticky=('E', 'W'))
 
     # Entry functions ###############################################
     def get_entry_row_data(self):
@@ -33,7 +29,6 @@ class Controller:
         self.entry.clear()
         first_entry_field_name = next(iter(self.entry.entries))
         self.entry.set_focus()
-        # self.entry.entries[first_entry_field_name].entry.focus_set()
 
     # Table functions ###############################################
     def handle_unselect_table_row(self):
@@ -49,6 +44,7 @@ class Controller:
             return
         self.command.show_selected_row_buttons()
         self.handle_clear_entry_row()
+        print(self.table.get())
         self.entry.set(self.table.get())
 
     def handle_update_selected_row(self):
@@ -68,8 +64,38 @@ class Controller:
         self.table.table.bind('<<TreeviewSelect>>', self.handle_table_row_selected)
 
 
-class ReportDataTable(ttk.Frame):
-    def __init__(self, parent, table_columns, controller, row_cnt=5):
+class ReportDataEntryButtons(ttk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+
+        # Create buttons to manage the table and entry widgets
+        btn_clear_row = ttk.Button(self, text='Clear', command=controller.handle_clear_entry_row)
+        btn_add_row = ttk.Button(self, text='Add Row', command=controller.handle_add_table_row)
+        # Create unselect button, call configure to assign command that hides btn_table_unselect
+        self.fr_selected_row_commands = ttk.Frame(self)
+        btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row', command=controller.handle_unselect_table_row)
+        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', command=controller.handle_update_selected_row)
+        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row', command=controller.handle_delete_table_row)
+
+        btn_table_unselect.grid(column=25, row=2)
+        btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
+        btn_table_delete_row.grid(column=10, row=2, padx=(5, 100))
+
+        btn_add_row.grid(row=2, column=90, sticky=('W', 'E'))
+        btn_clear_row.grid(row=2, column=80, padx=(0, 5), sticky=('E'))
+
+        self.columnconfigure(0, weight=1)
+
+    def show_selected_row_buttons(self):
+        self.fr_selected_row_commands.grid(row=2, column=20)
+        self.fr_selected_row_commands.tkraise()
+
+    def hide_selected_row_buttons(self):
+        self.fr_selected_row_commands.grid_forget()
+
+
+class AnalysisDataTable(ttk.Frame):
+    def __init__(self, parent, controller, row_cnt=5):
         super().__init__(parent)
 
         self.table = ttk.Treeview(self, height=row_cnt)
@@ -82,10 +108,15 @@ class ReportDataTable(ttk.Frame):
 
         # Declare and configure columns
         self.table['show'] = 'headings'
+        ttk.Style().configure('Treeview', rowheight=30)
+        self._set_columns()
 
-        self.table['columns'] = ['State', 'City', 'Zip', 'Description']
+    def _set_columns(self):
+        self.table['columns'] = ['Row', 'State', 'City', 'Zip', 'Description']
+        self.table.column('Row', width=50, anchor=tk.CENTER)
+        self.table.heading('Row', text='Row')
         self.table.column('State', width=100, anchor=tk.CENTER)
-        self.table.heading('State', text='State')
+        self.table.heading('State', text='State')        
         self.table.column('City', width=100, anchor=tk.CENTER)
         self.table.heading('City', text='City')
         self.table.column('Zip', width=100, anchor=tk.CENTER)
@@ -93,8 +124,7 @@ class ReportDataTable(ttk.Frame):
         self.table.column('Description', width=100, anchor=tk.CENTER)
         self.table.heading('Description', text='Description')
 
-        self.table['displaycolumns'] = ('State', 'City', 'Zip')
-        ttk.Style().configure('Treeview', rowheight=30)
+        self.table['displaycolumns'] = ('Row', 'State', 'City', 'Zip')
 
     def get(self):
         return self.table.set(self.table.focus())
@@ -103,8 +133,9 @@ class ReportDataTable(ttk.Frame):
         return [self.table.set(r) for r in self.get_table_iids()]
 
     def add(self, row_data):  # table_index=None,
+        row_data.insert(0, self.last_row_index + 2)      # Add row number to list
         self.table.insert('', tk.END, values=row_data)
-        self.table.yview(tk.MOVETO, 1)  # Scroll Y to see new entry
+        self.table.yview(tk.MOVETO, 1)                   # Scroll Y to see new entry
 
     def update(self, iid, row_data):  # row_num
         for k, v in row_data.items():
@@ -114,13 +145,14 @@ class ReportDataTable(ttk.Frame):
         if not self._verify_delete_table_row():
             return
         self.table.delete(row_iid)
+        self._renumber_rows()
 
     def unselect(self):
         self.table.selection_set('')
 
-    # def _renumber_rows(self):
-    #     for num, row in enumerate(self.get_table_iids()):
-    #         self.table.set(row, 'ROWNUMBER', num + 1)
+    def _renumber_rows(self):
+        for num, iid in enumerate(self.get_table_iids()):
+            self.table.set(iid, 'Row', num + 1)
 
     @property
     def selected(self):
@@ -150,60 +182,24 @@ class ReportDataTable(ttk.Frame):
         return self.table.get_children()
 
     @property
-    def last_row_id(self):
+    def last_row_iid(self):
         if self.table_row_count:
             return self.get_table_iids()[-1]
         return None
 
     @property
     def last_row_index(self):
-        return self.table.index(self.last_row_id)
-
-    @property
-    def last_row_number(self):
-        """Uses table index to determine last row number"""
-        if not self.table_row_count:
-            return 0  # Return 0 for an empty table
-        return self.table.index(self.last_row_id) + 1
+        if self.table_row_count:
+            return self.table.index(self.last_row_iid)
+        return -1
 
     def _verify_delete_table_row(self):
         return messagebox.askyesno(title='Warning! Deleting a table row...', message='This action will permamanently\
                                       delete the selected table row.\nAre you sure you want to proceed?', icon='warning')
 
 
-class ReportDataEntryButtons(ttk.Frame):
+class AnalysisDataInput(ttk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
-
-        # Create buttons to manage the table and entry widgets
-        btn_clear_row = ttk.Button(self, text='Clear', command=controller.handle_clear_entry_row)
-        btn_add_row = ttk.Button(self, text='Add Row', command=controller.handle_add_table_row) 
-        # Create unselect button, call configure to assign command that hides btn_table_unselect
-        self.fr_selected_row_commands = ttk.Frame(self)
-        btn_table_unselect = ttk.Button(self.fr_selected_row_commands, text='Unselect Row', command=controller.handle_unselect_table_row)
-        btn_table_row_update = ttk.Button(self.fr_selected_row_commands, text='Update Row', command=controller.handle_update_selected_row)
-        btn_table_delete_row = ttk.Button(self.fr_selected_row_commands, text='Delete Row', command=controller.handle_delete_table_row)
-
-        btn_table_unselect.grid(column=25, row=2)
-        btn_table_row_update.grid(column=20, row=2, padx=(5, 20))
-        btn_table_delete_row.grid(column=10, row=2, padx=(5, 100))
-
-        btn_add_row.grid(row=2, column=90, sticky=('W', 'E'))
-        btn_clear_row.grid(row=2, column=80, padx=(0, 5), sticky=('E'))
-
-        # self.columnconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-
-    def show_selected_row_buttons(self):
-        self.fr_selected_row_commands.grid(row=2, column=20)
-        self.fr_selected_row_commands.tkraise()
-
-    def hide_selected_row_buttons(self):
-        self.fr_selected_row_commands.grid_forget()
-
-
-class ReportDataEntryInputs(ttk.Frame):
-    def __init__(self, parent, input_info, controller):
         super().__init__(parent)
 
         self.controller = controller
@@ -211,12 +207,15 @@ class ReportDataEntryInputs(ttk.Frame):
         fr_entry_form = ttk.Frame(self)  # Frame for Entry widgets
         fr_entry_form.grid(row=50, column=0, padx=10, pady=20)  # Frame for Entry widgets
 
+        self._set_widgets(fr_entry_form)
+
+    def _set_widgets(self, parent):
         self.entries = {}
 
-        self.entries['State'] = (ttk.Label(fr_entry_form, text='State', anchor='center'), ttk.Entry(fr_entry_form, width=10))
-        self.entries['City'] = (ttk.Label(fr_entry_form, text='City', anchor='center'), ttk.Entry(fr_entry_form, width=10))
-        self.entries['Zip'] = (ttk.Label(fr_entry_form, text='Zip', anchor='center'), ttk.Entry(fr_entry_form, width=10))
-        self.entries['Description'] = (ttk.Label(fr_entry_form, text='Description', anchor='center'), ttk.Entry(fr_entry_form, width=50))
+        self.entries['State'] = (ttk.Label(parent, text='State', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['City'] = (ttk.Label(parent, text='City', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['Zip'] = (ttk.Label(parent, text='Zip', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['Description'] = (ttk.Label(parent, text='Description', anchor='center'), ttk.Entry(parent, width=50))
 
         self._grid_label_entry(self.entries['State'], 0, 0)
         self._grid_label_entry(self.entries['City'], 0, 1)
@@ -232,16 +231,14 @@ class ReportDataEntryInputs(ttk.Frame):
         return {k: v[1].get() for k, v in self.entries.items()}
 
     def set(self, row_data):
-        for e, i in zip(self.entries.values(), row_data.values()):
-            print(i)
-            e[1].insert(0, i)
+        for k, v in self.entries.items():
+            v[1].insert(0, row_data[k])
 
     def clear(self):
         """Clear the entry widgets that are used to add data to table"""
         for v in self.entries.values():
             if v[1] is not None:
                 v[1].delete(0, tk.END)
-        # list(self.entries.values())[0][1].focus_set()
 
     def set_focus(self):
         list(self.entries.values())[0][1].focus_set()
@@ -256,18 +253,12 @@ class ReportDataEntryInputs(ttk.Frame):
 
 
 def main():
-    # table_columns = {'NAME': 'Name', 'COLOR': 'Color', 'SHAPE': 'Shape'}
-    # table_columns = {
-    #                  'STATE': ('State', 200, 20),
-    #                  'CITY': ('City', 200, 20),
-    #                  'ZIP': ('Zip', 200, 20),
-    #                  }
 
     root = tk.Tk()
 
     content = ttk.Frame(root, padding=(10, 10, 10, 10))
     control = Controller()
-    control.start(content, PrimaryDefinition)
+    control.start(content)
     control.show()
 
     close = ttk.Button(content, text='Close', command=root.destroy)
