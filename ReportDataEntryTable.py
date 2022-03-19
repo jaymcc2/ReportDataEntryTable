@@ -7,7 +7,7 @@ Create a class that is specific to each analysis type
 
 
 class AnalysisController:
-
+    """Provide logical interface for the table and entry widget functins"""
     def start(self, parent, table, entry):
         self.table = table(parent, self)
         self.entry = entry(parent, self)
@@ -65,6 +65,7 @@ class AnalysisController:
 
 
 class AnalysisDataButtons(ttk.Frame):
+    """Define buttons and the call to controller functions for them"""
     def __init__(self, parent, controller):
         super().__init__(parent)
 
@@ -95,6 +96,7 @@ class AnalysisDataButtons(ttk.Frame):
 
 
 class AnalysisDataTable(ttk.Frame):
+    """Create a table to view data that is input from the entry fields"""
     def __init__(self, parent, controller, row_cnt=5):
         super().__init__(parent)
 
@@ -112,7 +114,10 @@ class AnalysisDataTable(ttk.Frame):
         self._set_columns()
 
     def _set_columns(self):
+        # Create columns for entry data
         self.table['columns'] = ['Row', 'State', 'City', 'Zip', 'Description']
+
+        # Define the apperance of the columns
         self.table.column('Row', width=50, anchor=tk.CENTER)
         self.table.heading('Row', text='Row')
         self.table.column('State', width=100, anchor=tk.CENTER)
@@ -124,33 +129,48 @@ class AnalysisDataTable(ttk.Frame):
         self.table.column('Description', width=100, anchor=tk.CENTER)
         self.table.heading('Description', text='Description')
 
+        # Set which columns should appear in the table, any defined columns
+        # not in this list will not appear, but will still be able to contain
+        # data from entry inputs
         self.table['displaycolumns'] = ('Row', 'State', 'City', 'Zip')
 
     def get(self):
+        # Get table row of given iid
+        # Data is returned as of dictionary
+        # Color: 'red', shape='square'
         return self.table.set(self.table.focus())
 
     def get_all(self):
+        # This should return all rows, as a list of dicts
+        # [DEBUG] NOT TESTED!!!
         return [self.table.set(r) for r in self.get_table_iids()]
 
-    def add(self, row_data):  # table_index=None,
+    def add(self, row_data):
+        # Insert new data row into the table
         row_data.insert(0, self.last_row_index + 2)      # Add row number to list
-        self.table.insert('', tk.END, values=row_data)
+        self.table.insert('', tk.END, values=row_data)   # Insert to table
         self.table.yview(tk.MOVETO, 1)                   # Scroll Y to see new entry
 
-    def update(self, iid, row_data):  # row_num
+    def update(self, iid, row_data):
+        # Update the table row of the given iid
         for k, v in row_data.items():
             self.table.set(iid, k, v)
 
     def delete(self, row_iid):
-        if not self._verify_delete_table_row():
+        # Delete table row of the given iid
+        if not self._verify_delete_table_row():  # Offer last chance to not delete the row
             return
-        self.table.delete(row_iid)
-        self._renumber_rows()
+        self.table.delete(row_iid)  # Delete the given row iid
+        self._renumber_rows()       # Renumber the row column
 
     def unselect(self):
+        # Remove table selection
         self.table.selection_set('')
 
     def _renumber_rows(self):
+        # Loop through table and renumber the row column
+        # [INFO]This uses a different logic to set row number 
+        # than the add method, could be an issue
         for num, iid in enumerate(self.get_table_iids()):
             self.table.set(iid, 'Row', num + 1)
 
@@ -163,32 +183,30 @@ class AnalysisDataTable(ttk.Frame):
         return False
 
     @property
-    def selected_row_iid(self):
-        return self.table.selection()[0]
-
-    @property
     def selected_row_index(self):
+        """Return the index of the selected row"""
         return self.table.index(self.table.selection())
 
     @property
-    def selected_row_number(self):
-        return self.selected_row_index + 1
-
-    @property
     def table_row_count(self):
+        """Returns the number of entries in the data table
+           Useful as a check for empty table"""
         return len(self.table.get_children())
 
     def get_table_iids(self):
+        """Returns a list of all iid in the table"""
         return self.table.get_children()
 
     @property
     def last_row_iid(self):
+        """Returns the iid of the last row in the table"""
         if self.table_row_count:
             return self.get_table_iids()[-1]
         return None
 
     @property
     def last_row_index(self):
+        """Returns the index of the last row in the table"""
         if self.table_row_count:
             return self.table.index(self.last_row_iid)
         return -1
@@ -210,6 +228,11 @@ class AnalysisDataEntry(ttk.Frame):
         self._set_widgets(fr_entry_form)
 
     def _set_widgets(self, parent):
+        """Create and grid entry widgets for report dialog
+        
+        When subclassing the AnalysisDataEntry class this method should be redefined
+        with the specific widgets and layout desired
+        """
         self.entries = {}
 
         self.entries['State'] = (ttk.Label(parent, text='State', anchor='center'), ttk.Entry(parent, width=15))
@@ -221,6 +244,17 @@ class AnalysisDataEntry(ttk.Frame):
         self._grid_label_entry(self.entries['City'], 0, 1)
         self._grid_label_entry(self.entries['Zip'], 0, 2)
         self._grid_label_entry(self.entries['Description'], 3, 0, columnspan=3)
+
+        # Add validation to entry
+        check_number = (parent.register(self.isNumber), '%P')
+        self.entries['Zip'][1].config(validate='all', validatecommand=(check_number))
+
+    def isNumber(self, input):
+        """Function returns True if given data is a number or
+        an empty string, all other values will return False"""
+        if not input or input.isdigit():
+            return True
+        return False
 
     def _grid_label_entry(self, widget_collection, row, column, **kwargs):
         l, e = widget_collection
@@ -252,46 +286,13 @@ class AnalysisDataEntry(ttk.Frame):
         return 1
 
 
-class BulkAsbestosEntry(AnalysisDataEntry):
-
-    def _set_widgets(self, parent):
-        self.entries = {}
-
-        self.entries['LabSample'] = (ttk.Label(parent, text='Lab Sample', anchor='center'), ttk.Entry(parent, width=15))
-        self.entries['ClientSample'] = (ttk.Label(parent, text='Client Sample', anchor='center'), ttk.Entry(parent, width=15))
-        self.entries['Analysis'] = (ttk.Label(parent, text='Analysis', anchor='center'), ttk.Entry(parent, width=15))
-        self.entries['AsbestosType'] = (ttk.Label(parent, text='Asbestos Type', anchor='center'), ttk.Entry(parent, width=50))
-
-        self._grid_label_entry(self.entries['LabSample'], 0, 0)
-        self._grid_label_entry(self.entries['ClientSample'], 0, 1)
-        self._grid_label_entry(self.entries['Analysis'], 0, 2)
-        self._grid_label_entry(self.entries['AsbestosType'], 3, 0, columnspan=3)
-
-class BulkAsbestosTable(AnalysisDataTable):
-
-    def _set_columns(self):
-        self.table['columns'] = ['Row', 'LabSample', 'ClientSample', 'Analysis', 'AsbestosType']
-        self.table.column('Row', width=50, anchor=tk.CENTER)
-        self.table.heading('Row', text='Row')
-        self.table.column('LabSample', width=100, anchor=tk.CENTER)
-        self.table.heading('LabSample', text='Lab Sample')        
-        self.table.column('ClientSample', width=100, anchor=tk.CENTER)
-        self.table.heading('ClientSample', text='Client Sample')
-        self.table.column('Analysis', width=300, anchor=tk.CENTER)
-        self.table.heading('Analysis', text='Analysis')
-        self.table.column('AsbestosType', width=100, anchor=tk.CENTER)
-        self.table.heading('AsbestosType', text='Asbestos Type')
-
-        self.table['displaycolumns'] = ('Row', 'LabSample', 'ClientSample', 'Analysis', 'AsbestosType')
-
-
 def main():
 
     root = tk.Tk()
 
     content = ttk.Frame(root, padding=(10, 10, 10, 10))
     control = AnalysisController()
-    control.start(content, BulkAsbestosTable, BulkAsbestosEntry)
+    control.start(content, AnalysisDataTable, AnalysisDataEntry)
     control.show()
 
     close = ttk.Button(content, text='Close', command=root.destroy)
