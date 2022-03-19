@@ -246,15 +246,19 @@ class AnalysisDataEntry(ttk.Frame):
         self._grid_label_entry(self.entries['Description'], 3, 0, columnspan=3)
 
         # Add validation to entry
-        check_number = (parent.register(self.isNumber), '%P')
+        check_number = (parent.register(self.isNumber), '%P', 99)
         self.entries['Zip'][1].config(validate='all', validatecommand=(check_number))
 
-    def isNumber(self, input):
+    def isNumber(self, input, value=None):
         """Function returns True if given data is a number or
         an empty string, all other values will return False"""
-        if not input or input.isdigit():
+        if not input:  # Allow empty field
             return True
-        return False
+        if not input.isdigit():
+            return False
+        if value and int(input) > int(value):
+            return False
+        return True
 
     def _grid_label_entry(self, widget_collection, row, column, **kwargs):
         l, e = widget_collection
