@@ -6,12 +6,12 @@ Create a class that is specific to each analysis type
 """
 
 
-class Controller:
+class AnalysisController:
 
-    def start(self, parent):
-        self.table = AnalysisDataTable(parent, self)
-        self.entry = AnalysisDataInput(parent, self)
-        self.command = ReportDataEntryButtons(parent, self)
+    def start(self, parent, table, entry):
+        self.table = table(parent, self)
+        self.entry = entry(parent, self)
+        self.command = AnalysisDataButtons(parent, self)
 
         self.create_dialog_bindings()
 
@@ -64,7 +64,7 @@ class Controller:
         self.table.table.bind('<<TreeviewSelect>>', self.handle_table_row_selected)
 
 
-class ReportDataEntryButtons(ttk.Frame):
+class AnalysisDataButtons(ttk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
 
@@ -198,7 +198,7 @@ class AnalysisDataTable(ttk.Frame):
                                       delete the selected table row.\nAre you sure you want to proceed?', icon='warning')
 
 
-class AnalysisDataInput(ttk.Frame):
+class AnalysisDataEntry(ttk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
 
@@ -252,13 +252,46 @@ class AnalysisDataInput(ttk.Frame):
         return 1
 
 
+class BulkAsbestosEntry(AnalysisDataEntry):
+
+    def _set_widgets(self, parent):
+        self.entries = {}
+
+        self.entries['LabSample'] = (ttk.Label(parent, text='Lab Sample', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['ClientSample'] = (ttk.Label(parent, text='Client Sample', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['Analysis'] = (ttk.Label(parent, text='Analysis', anchor='center'), ttk.Entry(parent, width=15))
+        self.entries['AsbestosType'] = (ttk.Label(parent, text='Asbestos Type', anchor='center'), ttk.Entry(parent, width=50))
+
+        self._grid_label_entry(self.entries['LabSample'], 0, 0)
+        self._grid_label_entry(self.entries['ClientSample'], 0, 1)
+        self._grid_label_entry(self.entries['Analysis'], 0, 2)
+        self._grid_label_entry(self.entries['AsbestosType'], 3, 0, columnspan=3)
+
+class BulkAsbestosTable(AnalysisDataTable):
+
+    def _set_columns(self):
+        self.table['columns'] = ['Row', 'LabSample', 'ClientSample', 'Analysis', 'AsbestosType']
+        self.table.column('Row', width=50, anchor=tk.CENTER)
+        self.table.heading('Row', text='Row')
+        self.table.column('LabSample', width=100, anchor=tk.CENTER)
+        self.table.heading('LabSample', text='Lab Sample')        
+        self.table.column('ClientSample', width=100, anchor=tk.CENTER)
+        self.table.heading('ClientSample', text='Client Sample')
+        self.table.column('Analysis', width=300, anchor=tk.CENTER)
+        self.table.heading('Analysis', text='Analysis')
+        self.table.column('AsbestosType', width=100, anchor=tk.CENTER)
+        self.table.heading('AsbestosType', text='Asbestos Type')
+
+        self.table['displaycolumns'] = ('Row', 'LabSample', 'ClientSample', 'Analysis', 'AsbestosType')
+
+
 def main():
 
     root = tk.Tk()
 
     content = ttk.Frame(root, padding=(10, 10, 10, 10))
-    control = Controller()
-    control.start(content)
+    control = AnalysisController()
+    control.start(content, BulkAsbestosTable, BulkAsbestosEntry)
     control.show()
 
     close = ttk.Button(content, text='Close', command=root.destroy)
